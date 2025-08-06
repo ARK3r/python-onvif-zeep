@@ -4,6 +4,7 @@ import datetime as dt
 import logging
 import os.path
 from threading import Thread, RLock
+from urllib import parse
 
 from zeep.client import Client, CachingClient, Settings
 from zeep.wsse.username import UsernameToken
@@ -200,7 +201,7 @@ class ONVIFCamera(object):
                  wsdl_dir=os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                        "wsdl"),
                  encrypt=True, daemon=False, no_cache=False, adjust_time=False, event_pullpoint=True,
-                 transport=None):
+                 transport=None, override_camera_address=False):
         os.environ.pop('http_proxy', None)
         os.environ.pop('https_proxy', None)
         self.host = host
@@ -214,6 +215,7 @@ class ONVIFCamera(object):
         self.adjust_time = adjust_time
         self.event_pullpoint = event_pullpoint
         self.transport = transport
+        self._override_camera_address = override_camera_address
 
         # Active service client container
         self.services = {}
@@ -239,18 +241,6 @@ class ONVIFCamera(object):
         self.xaddrs = {}
         capabilities = self.devicemgmt.GetCapabilities({'Category': 'All'})
         for name in capabilities:
-            try:
-                retrived_address=capabilities[name].XAddr
-                right=retrived_address.split("//")[1]
-                retrived_url=right.split("/")[0]
-                ip_address=retrived_url.split(":")[0]
-                port_address = retrived_url.split(":")[1]
-                if (self.host != ip_address or self.port != port_address):
-                    remaining=right.split("/")[1]
-                    new_address="http://"+self.host+":"+str(self.port)+"/"+right.split("/")[1]+"/"+right.split("/")[2]
-                    capabilities[name].XAddr=new_address
-            except:
-                pass
             capability = capabilities[name]
             try:
                 if name.lower() in SERVICES and capability is not None:
@@ -267,6 +257,10 @@ class ONVIFCamera(object):
                         self.event.CreatePullPointSubscription().SubscriptionReference.Address._value_1
             except Exception:
                 pass
+
+        if self._override_camera_address:
+            self.xaddrs = {service: self._replace_netloc_in_url(url, self.host, self.port)
+                           for service, url in self.xaddrs.items()}
 
     def update_url(self, host=None, port=None):
         changed = False
@@ -403,3 +397,13 @@ class ONVIFCamera(object):
 
     def create_subscription_service(self, transport=None):
         return self.create_onvif_service('subscription', transport=transport)
+
+    @classmethod
+    def _replace_netloc_in_url(self, url: str, host, port):
+        parsed_url = parse.urlparse(url)
+        return parse.urlunparse((parsed_url.scheme,
+                          f"{host}:{port}",
+                          parsed_url.path,
+                          parsed_url.params,
+                          parsed_url.query,
+                          parsed_url.fragment))
