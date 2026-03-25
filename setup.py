@@ -1,9 +1,6 @@
 """Setup script for the onvif_zeep package."""
 import os
-import sysconfig
-import shutil
 from setuptools import setup, find_packages
-from setuptools.command.install import install
 
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -33,24 +30,6 @@ CLASSIFIERS = [
 ]
 
 
-class CustomInstallCommand(install):
-    """Custom install command to handle WSDL files."""
-    def run(self):
-        # Run regular installation first
-        install.run(self)
-
-        # Now manually copy the wsdl files to site-packages/wsdl
-        wsdl_src_dir = 'wsdl'
-        wsdl_dst_dir = os.path.join(sysconfig.get_paths()['purelib'], 'wsdl')
-
-        os.makedirs(wsdl_dst_dir, exist_ok=True)
-
-        for file in os.listdir(wsdl_src_dir):
-            src_path = os.path.join(wsdl_src_dir, file)
-            dst_path = os.path.join(wsdl_dst_dir, file)
-            shutil.copyfile(src_path, dst_path)
-
-
 setup(
     name='onvif_zeep',
     version=version,
@@ -65,11 +44,10 @@ setup(
     url='http://github.com/quatanium/python-onvif',
     zip_safe=False,
     packages=find_packages(exclude=['docs', 'examples', 'tests']),
+    package_data={'onvif': ['wsdl/*', 'wsdl/**/*']},
+    include_package_data=True,
     install_requires=requires,
     entry_points={
         'console_scripts': ['onvif-cli = onvif.cli:main']
-    },
-    cmdclass={
-        'install': CustomInstallCommand,
     },
 )

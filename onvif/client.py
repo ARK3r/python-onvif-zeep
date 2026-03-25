@@ -198,8 +198,7 @@ class ONVIFCamera(object):
                              'imaging': True, 'events': True, 'analytics': True}
 
     def __init__(self, host, port, user, passwd,
-                 wsdl_dir=os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                       "wsdl"),
+                 wsdl_dir=os.path.join(os.path.dirname(__file__), "wsdl"),
                  encrypt=True, daemon=False, no_cache=False, adjust_time=False, event_pullpoint=True,
                  transport=None, override_camera_address=False):
         os.environ.pop('http_proxy', None)
